@@ -57,5 +57,17 @@ jobs:
       # PATH, hiding the `pebble` tool.
       - name: pebble build
         run: |
-          docker run --rm -v "${{ github.workspace }}/watchapp":/src:ro rebble/pebble-sdk \
-            bash -c 'set -e; cp -r /src ~/app && cd ~/app && pebble build'
+          mkdir -p dist
+          docker run --rm \
+            -v "${{ github.workspace }}/watchapp":/src:ro \
+            -v "${{ github.workspace }}/dist":/out \
+            rebble/pebble-sdk \
+            bash -c 'set -e; cp -r /src ~/app && cd ~/app && pebble build && cp build/*.pbw /out/'
+
+      - name: Upload .pbw
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: watchapp-pbw
+          path: dist/*.pbw
+          if-no-files-found: error
