@@ -1,5 +1,4 @@
 #include "arrows.h"
-#include <math.h>
 
 // Vector maneuver arrows, drawn in a normalized 0..100 box mapped onto `frame`.
 // Shafts are thick polylines; heads are filled triangles. Colour comes from the
@@ -14,7 +13,11 @@ static GPoint np(GRect f, int nx, int ny) {
 // Filled triangular arrowhead at `tip`, pointing along unit-ish vector (dx,dy).
 // `size` is in pixels (length of the head along its axis).
 static void head(GContext *ctx, GPoint tip, int dx, int dy, int size) {
-  float len = sqrtf((float)(dx * dx + dy * dy));
+  // Cheap vector-length approximation (max + 0.41*min) so we avoid libm's sqrtf, which
+  // pulls in newlib __errno that the Pebble link environment doesn't provide.
+  int adx = dx < 0 ? -dx : dx;
+  int ady = dy < 0 ? -dy : dy;
+  float len = (adx > ady) ? (adx + 0.41f * ady) : (ady + 0.41f * adx);
   if (len < 0.001f) {
     return;
   }
