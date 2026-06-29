@@ -51,15 +51,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Build inside the Rebble SDK image. Source is mounted read-only and copied into the
-      # container's home so the `pebble` user can write the build/ dir without hitting the
-      # runner's file ownership.
+      # Build inside the Rebble SDK image (SDK is preinstalled + activated). Source is mounted
+      # read-only and copied into the container's home so the `pebble` user can write build/.
+      # Use `bash -c` (NOT `-lc`): a login shell re-runs /etc/profile and clobbers the image's
+      # PATH, hiding the `pebble` tool.
       - name: pebble build
         run: |
           docker run --rm -v "${{ github.workspace }}/watchapp":/src:ro rebble/pebble-sdk \
-            bash -lc '
-              set -e
-              mkdir -p ~/.pebble-sdk && touch ~/.pebble-sdk/NO_TRACKING
-              cp -r /src ~/app && cd ~/app
-              pebble build
-            '
+            bash -c 'set -e; cp -r /src ~/app && cd ~/app && pebble build'

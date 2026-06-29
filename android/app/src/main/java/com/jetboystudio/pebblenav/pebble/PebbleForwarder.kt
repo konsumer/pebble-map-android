@@ -82,25 +82,25 @@ class PebbleForwarder(context: Context) {
         if (value.isNotEmpty()) m[key] = PebbleDictionaryItem.Text(value)
     }
 
+    /** Raw integer AppMessage keys — must match watchapp/src/c/keys.h. */
+    object Keys {
+        val NAV_ACTIVE = 1u
+        val MANEUVER = 2u
+        val ARROW_BITMAP = 3u
+        val DISTANCE = 4u
+        val STREET = 5u
+        val INSTRUCTION = 6u
+        val ETA = 7u
+        val DIST_REMAIN = 8u
+        val TIME_REMAIN = 9u
+        val LANES = 10u
+        val REQUEST_STATE = 11u
+    }
+
     companion object {
         private const val RELAUNCH_DELAY_MS = 900L
 
         // Must match watchapp/package.json -> pebble.uuid and shared-contract.md.
         val APP_UUID: UUID = UUID.fromString("c83491e7-5048-4959-aeef-fe05d7a2edd1")
-
-        /** Raw integer AppMessage keys — must match watchapp/src/c/keys.h. */
-        object Keys {
-            val NAV_ACTIVE = 1u
-            val MANEUVER = 2u
-            val ARROW_BITMAP = 3u
-            val DISTANCE = 4u
-            val STREET = 5u
-            val INSTRUCTION = 6u
-            val ETA = 7u
-            val DIST_REMAIN = 8u
-            val TIME_REMAIN = 9u
-            val LANES = 10u
-            val REQUEST_STATE = 11u
-        }
     }
 }
