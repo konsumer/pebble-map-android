@@ -7,9 +7,29 @@ Android phone and the next turn — arrow, distance, and street — pops up on t
 automatically. Built for the relaunched, open-source Pebble (primary target **Pebble Time 2**,
 works across Pebble platforms).
 
-> **Status:** complete source for both halves (watchapp + Android companion). The author
-> could not flash a watch / pair a phone in the build environment, so the parser logic is
-> unit-tested and an on-device checklist is provided below — expect small tuning on first run.
+I wanted a simple & open-source turn-direction (and eventually map) app for pebble. THis is not fancy, but you can evaluate how it works (for security.) I tested on latest Graphene on a Pixel 10 Pro.
+
+## Usage
+
+### Files
+
+I wanted this to be very source-tracable, so you can see exactly how the file was built in Github CI. This allows you to verify I didn't do something sneaky, but also not require you to build it yourself. The exact process used to build them is [here](https://github.com/konsumer/pebble-map-android/blob/main/.github/workflows/ci.yml)
+
+- Click on latest green action-run [here](https://github.com/konsumer/pebble-map-android/actions)
+- scroll to bottom (after inspecting run, etc) and download `app-debug-apk` and `watchapp-pbw` to your phone. they are zips, so extract them in your file-browser. Install the APK, and open the pbw in Pebble.
+
+### Permissions
+
+On Graphene/Android, permissions are tricky for self-installed APKs. I did this:
+
+1. Settings → Apps → Pebble Maps Nav (the app's info page).
+2. Tap the ⋮ three‑dot menu in the top‑right corner.
+3. Tap "Allow restricted settings."
+4. Go back to "notifications read, reply & control" → now the toggle for Pebble Maps Nav will enable. Confirm the warning dialog.
+
+
+At some point, I may publish to play-store, but for now, this is basically just for me & mty firends that have Pebbles.
+
 
 ## How it works
 
@@ -84,10 +104,9 @@ Then on the phone:
 
 ## On the watch
 
-- **Default:** maneuver arrow + distance to the turn + street.
-- **UP:** trip overview — arrival time, time left, distance left.
-- **DOWN:** details — full instruction and lane guidance when available.
-- **SELECT:** back to the turn view. A new turn snaps back to it automatically.
+A single screen shows everything that's available at once: the maneuver arrow, distance to
+the turn, the street, and a trip-summary line (time left · distance left · ETA). Press
+**Back** to exit.
 
 ## Verifying it works
 

@@ -109,8 +109,8 @@ class MainActivity : ComponentActivity() {
                 "1. Install the watchapp on your Pebble (see the repo README).\n" +
                 "2. Grant Notification Access above.\n" +
                 "3. Start driving directions in Google Maps.\n\n" +
-                "The next turn, distance and street show on the watch. On the watch: UP = trip " +
-                "overview / ETA, DOWN = details, SELECT = back to the turn.\n\n" +
+                "The watch shows the turn arrow, distance, street and a trip summary " +
+                "(time left, distance left, ETA) on one screen.\n\n" +
                 "Project: https://github.com/konsumer/pebble-map-android"
     }
 }

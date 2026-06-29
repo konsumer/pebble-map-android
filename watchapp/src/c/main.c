@@ -3,81 +3,22 @@
 #include "keys.h"
 #include "views.h"
 
-typedef enum {
-  VIEW_NAV = 0,
-  VIEW_MAP = 1,
-  VIEW_INFO = 2,
-  VIEW_COUNT = 3,
-} ViewId;
-
 static Window *s_window;
 static Layer *s_root;
-static ViewId s_view = VIEW_NAV;
 
 // ---- rendering ----
-
-// Three small dots showing the active page, drawn at the bottom edge.
-static void draw_page_dots(GContext *ctx, GRect bounds) {
-  int gap = 12;
-  int total = gap * (VIEW_COUNT - 1);
-  int cx = bounds.origin.x + bounds.size.w / 2 - total / 2;
-  int cy = bounds.origin.y + bounds.size.h - 8;
-  for (int i = 0; i < VIEW_COUNT; i++) {
-    GPoint p = GPoint(cx + i * gap, cy);
-    if (i == s_view) {
-      graphics_context_set_fill_color(ctx, ui_fg());
-      graphics_fill_circle(ctx, p, 3);
-    } else {
-      graphics_context_set_stroke_color(ctx, ui_fg());
-      graphics_draw_circle(ctx, p, 3);
-    }
-  }
-}
 
 static void root_update_proc(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
   graphics_context_set_fill_color(ctx, ui_bg());
   graphics_fill_rect(ctx, bounds, 0, GCornerNone);
-
-  const NavState *s = navstate_get();
-  switch (s_view) {
-    case VIEW_MAP:  view_map_draw(ctx, bounds, s); break;
-    case VIEW_INFO: view_info_draw(ctx, bounds, s); break;
-    case VIEW_NAV:
-    default:        view_nav_draw(ctx, bounds, s); break;
-  }
-  draw_page_dots(ctx, bounds);
-}
-
-static void set_view(ViewId v) {
-  s_view = v;
-  layer_mark_dirty(s_root);
-}
-
-// ---- buttons ----  UP = overview, DOWN = details, SELECT = back to nav.
-
-static void up_click(ClickRecognizerRef r, void *ctx) { set_view(VIEW_MAP); }
-static void down_click(ClickRecognizerRef r, void *ctx) { set_view(VIEW_INFO); }
-static void select_click(ClickRecognizerRef r, void *ctx) { set_view(VIEW_NAV); }
-
-static void click_config(void *context) {
-  window_single_click_subscribe(BUTTON_ID_UP, up_click);
-  window_single_click_subscribe(BUTTON_ID_DOWN, down_click);
-  window_single_click_subscribe(BUTTON_ID_SELECT, select_click);
+  view_nav_draw(ctx, bounds, navstate_get());
 }
 
 // ---- AppMessage ----
 
 static void inbox_received(DictionaryIterator *iter, void *context) {
-  bool changed = navstate_update_from_dict(iter);
-
-  // A fresh maneuver (phone always includes MANEUVER on a turn update) snaps the
-  // driver back to the nav page even if they were browsing the overview/details.
-  if (dict_find(iter, KEY_MANEUVER) || dict_find(iter, KEY_NAV_ACTIVE)) {
-    s_view = VIEW_NAV;
-    changed = true;
-  }
-  if (changed) {
+  if (navstate_update_from_dict(iter)) {
     layer_mark_dirty(s_root);
   }
 }
@@ -112,7 +53,6 @@ static void window_unload(Window *window) {
 static void init(void) {
   s_window = window_create();
   window_set_background_color(s_window, ui_bg());
-  window_set_click_config_provider(s_window, click_config);
   window_set_window_handlers(s_window, (WindowHandlers){
     .load = window_load,
     .unload = window_unload,

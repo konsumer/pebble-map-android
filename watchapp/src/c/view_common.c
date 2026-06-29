@@ -36,14 +36,3 @@ void ui_text(GContext *ctx, const char *text, GFont font, GRect frame, GTextAlig
   graphics_context_set_text_color(ctx, ui_fg());
   graphics_draw_text(ctx, text, font, frame, GTextOverflowModeTrailingEllipsis, align, NULL);
 }
-
-void ui_label_value(GContext *ctx, GRect frame, const char *label, const char *value) {
-  graphics_context_set_text_color(ctx, ui_fg());
-  GFont lf = fonts_get_system_font(FONT_KEY_GOTHIC_14);
-  GFont vf = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
-  graphics_draw_text(ctx, label, lf, GRect(frame.origin.x, frame.origin.y, frame.size.w, 16),
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
-  graphics_draw_text(ctx, value, vf,
-                     GRect(frame.origin.x, frame.origin.y + 14, frame.size.w, frame.size.h - 14),
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
-}
