@@ -1,0 +1,38 @@
+{
+  "name": "pebble-gmaps-nav",
+  "author": "konsumer",
+  "version": "1.0.0",
+  "keywords": ["pebble-app"],
+  "private": true,
+  "dependencies": {},
+  "pebble": {
+    "displayName": "Maps Nav",
+    "uuid": "c83491e7-5048-4959-aeef-fe05d7a2edd1",
+    "sdkVersion": "3",
+    "enableMultiJS": false,
+    "targetPlatforms": [
+      "aplite",
+      "basalt",
+      "chalk",
+      "diorite",
+      "emery"
+    ],
+    "watchapp": {
+      "watchface": false
+    },
+    "resources": {
+      "media": []
+    },
+    "capabilities": [],
+    "companionApp": {
+      "android": {
+        "url": "https://github.com/konsumer/pebble-map-android",
+        "apps": [
+          {
+            "package": "com.jetboystudio.pebblenav"
+          }
+        ]
+      }
+    }
+  }
+}

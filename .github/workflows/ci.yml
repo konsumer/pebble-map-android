@@ -1,0 +1,65 @@
+name: CI
+
+# Compiles both halves so you get a green/red signal before flashing.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  android:
+    name: Android companion
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install platform 36
+        run: yes | sdkmanager "platforms;android-36" >/dev/null
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+
+      - name: Build + unit tests
+        run: gradle assembleDebug test --no-daemon --stacktrace
+
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
+
+  watchapp:
+    name: Pebble watchapp
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Build inside the Rebble SDK image. Source is mounted read-only and copied into the
+      # container's home so the `pebble` user can write the build/ dir without hitting the
+      # runner's file ownership.
+      - name: pebble build
+        run: |
+          docker run --rm -v "${{ github.workspace }}/watchapp":/src:ro rebble/pebble-sdk \
+            bash -lc '
+              set -e
+              mkdir -p ~/.pebble-sdk && touch ~/.pebble-sdk/NO_TRACKING
+              cp -r /src ~/app && cd ~/app
+              pebble build
+            '

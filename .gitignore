@@ -1,0 +1,16 @@
+# Pebble watchapp
+watchapp/build/
+watchapp/.pebble-cache/
+*.pbw
+
+# Android / Gradle
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+.idea/
+*.iml
+
+# OS
+.DS_Store
