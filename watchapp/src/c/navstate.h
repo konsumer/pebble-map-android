@@ -46,6 +46,3 @@ NavState *navstate_get(void);
 // Apply an incoming AppMessage dictionary to the singleton state.
 // Only keys present in the dict are modified. Returns true if anything changed.
 bool navstate_update_from_dict(DictionaryIterator *iter);
-
-// Seed the state with a sample turn, for emulator screenshots (see DEMO_MODE in main.c).
-void navstate_load_demo(void);
