@@ -108,6 +108,14 @@ A single screen shows everything that's available at once: the maneuver arrow, d
 the turn, the street, and a trip-summary line (time left · distance left · ETA). Press
 **Back** to exit.
 
+## Store screenshots
+
+The watch only shows data when the phone sends it, so to capture appstore screenshots in an
+emulator (CloudPebble or local), set `DEMO_MODE` to `1` in `watchapp/src/c/main.c`. This
+seeds a sample turn (left arrow, "200 m", "Main St", "18 min · 4.2 mi · 10:45") at launch.
+Build, switch the emulator platform (Aplite/Basalt/Chalk/Diorite/Emery) and grab a screenshot
+of each, then set `DEMO_MODE` back to `0` before shipping.
+
 ## Verifying it works
 
 - `cd android && ./gradlew test` — parser tests over real-notification text fixtures.

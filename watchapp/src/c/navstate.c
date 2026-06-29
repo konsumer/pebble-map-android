@@ -20,6 +20,18 @@ static bool copy_str(char *dest, const Tuple *t) {
   return true;
 }
 
+void navstate_load_demo(void) {
+  s_state.active = true;
+  s_state.maneuver = MANEUVER_TURN_LEFT;
+  s_state.has_arrow = false; // use the crisp vector arrow for the screenshot
+  strncpy(s_state.distance, "200 m", NAV_STR_LEN - 1);
+  strncpy(s_state.street, "Main St", NAV_STR_LEN - 1);
+  strncpy(s_state.instruction, "Turn left onto Main St", NAV_STR_LEN - 1);
+  strncpy(s_state.eta, "10:45", NAV_STR_LEN - 1);
+  strncpy(s_state.dist_remain, "4.2 mi", NAV_STR_LEN - 1);
+  strncpy(s_state.time_remain, "18 min", NAV_STR_LEN - 1);
+}
+
 bool navstate_update_from_dict(DictionaryIterator *iter) {
   bool changed = false;
 

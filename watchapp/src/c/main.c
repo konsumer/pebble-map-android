@@ -3,6 +3,10 @@
 #include "keys.h"
 #include "views.h"
 
+// Set to 1 to seed a sample turn at launch for appstore screenshots (build, screenshot each
+// platform in the emulator, then set back to 0). Leave at 0 for real builds.
+#define DEMO_MODE 0
+
 static Window *s_window;
 static Layer *s_root;
 
@@ -65,7 +69,13 @@ static void init(void) {
   app_message_open(512, 128);
 
   window_stack_push(s_window, true);
+
+#if DEMO_MODE
+  navstate_load_demo();
+  layer_mark_dirty(s_root);
+#else
   request_state();
+#endif
 }
 
 static void deinit(void) {
