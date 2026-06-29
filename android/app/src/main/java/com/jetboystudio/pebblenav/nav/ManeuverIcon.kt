@@ -22,19 +22,29 @@ object ManeuverIcon {
 
     fun pack(src: Bitmap?): ByteArray? {
         if (src == null) return null
-        val scaled = Bitmap.createScaledBitmap(src, W, H, true)
-        val out = ByteArray(SIZE)
-        val bg = scaled.getPixel(0, 0)
-        for (y in 0 until H) {
-            for (x in 0 until W) {
-                if (isInk(scaled.getPixel(x, y), bg)) {
-                    out[y * ROW_BYTES + (x ushr 3)] =
-                        (out[y * ROW_BYTES + (x ushr 3)].toInt() or (1 shl (7 - (x and 7)))).toByte()
+        return try {
+            // getPixel() throws on Config.HARDWARE bitmaps (common for notification icons),
+            // so always work from a software ARGB_8888 copy.
+            val software =
+                if (src.config == Bitmap.Config.HARDWARE) src.copy(Bitmap.Config.ARGB_8888, false)
+                else src
+            val scaled = Bitmap.createScaledBitmap(software, W, H, true)
+            val out = ByteArray(SIZE)
+            val bg = scaled.getPixel(0, 0)
+            for (y in 0 until H) {
+                for (x in 0 until W) {
+                    if (isInk(scaled.getPixel(x, y), bg)) {
+                        out[y * ROW_BYTES + (x ushr 3)] =
+                            (out[y * ROW_BYTES + (x ushr 3)].toInt() or (1 shl (7 - (x and 7)))).toByte()
+                    }
                 }
             }
+            if (scaled !== software) scaled.recycle()
+            if (software !== src) software.recycle()
+            out
+        } catch (e: Throwable) {
+            null // arrow is best-effort; the vector fallback still renders on the watch
         }
-        if (scaled !== src) scaled.recycle()
-        return out
     }
 
     private fun isInk(px: Int, bg: Int): Boolean {

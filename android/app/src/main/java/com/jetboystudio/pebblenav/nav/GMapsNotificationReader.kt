@@ -115,17 +115,21 @@ object GMapsNotificationReader {
         null
     }
 
-    private fun drawableToBitmap(drawable: Drawable): Bitmap? {
+    private fun drawableToBitmap(drawable: Drawable): Bitmap? = try {
+        // Always produce a software ARGB_8888 bitmap: notification icons can be HARDWARE
+        // bitmaps, which throw on the getPixel() we do later in ManeuverIcon.
         if (drawable is BitmapDrawable && drawable.bitmap != null) {
-            val cfg = drawable.bitmap.config ?: Bitmap.Config.ARGB_8888
-            return drawable.bitmap.copy(cfg, false)
+            drawable.bitmap.copy(Bitmap.Config.ARGB_8888, false)
+        } else {
+            val w = drawable.intrinsicWidth.takeIf { it > 0 } ?: 48
+            val h = drawable.intrinsicHeight.takeIf { it > 0 } ?: 48
+            val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bmp)
+            drawable.setBounds(0, 0, canvas.width, canvas.height)
+            drawable.draw(canvas)
+            bmp
         }
-        val w = drawable.intrinsicWidth.takeIf { it > 0 } ?: 48
-        val h = drawable.intrinsicHeight.takeIf { it > 0 } ?: 48
-        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bmp)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
-        drawable.draw(canvas)
-        return bmp
+    } catch (e: Throwable) {
+        null
     }
 }

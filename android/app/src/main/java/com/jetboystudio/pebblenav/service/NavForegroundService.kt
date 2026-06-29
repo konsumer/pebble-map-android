@@ -19,15 +19,21 @@ class NavForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        ensureChannel(this)
-        val notification = Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("Forwarding directions to Pebble")
-            .setContentText("Google Maps navigation is mirrored on your watch")
-            .setSmallIcon(android.R.drawable.ic_dialog_map)
-            .setOngoing(true)
-            .build()
-        startForeground(NOTIFICATION_ID, notification)
-        return START_STICKY
+        try {
+            ensureChannel(this)
+            val notification = Notification.Builder(this, CHANNEL_ID)
+                .setContentTitle("Forwarding directions to Pebble")
+                .setContentText("Google Maps navigation is mirrored on your watch")
+                .setSmallIcon(android.R.drawable.ic_dialog_map)
+                .setOngoing(true)
+                .build()
+            startForeground(NOTIFICATION_ID, notification)
+        } catch (e: Throwable) {
+            // Some OS versions restrict starting a foreground service from the background.
+            // Forwarding still works without it, so fail quietly instead of crashing.
+            stopSelf()
+        }
+        return START_NOT_STICKY
     }
 
     companion object {

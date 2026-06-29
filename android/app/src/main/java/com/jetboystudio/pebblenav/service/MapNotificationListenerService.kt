@@ -18,14 +18,20 @@ class MapNotificationListenerService : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
-        if (sbn == null || !GMapsNotificationReader.isNavNotification(sbn)) return
-        val read = GMapsNotificationReader.read(applicationContext, sbn) ?: return
-        NavController.onNavUpdate(applicationContext, read)
+        // Reading/parsing happens off-main inside NavController; keep this callback trivial
+        // and guarded so a bad notification can never crash the listener process.
+        runCatching {
+            if (sbn != null && GMapsNotificationReader.isNavNotification(sbn)) {
+                NavController.onMapsNav(applicationContext, sbn)
+            }
+        }
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
-        if (sbn != null && GMapsNotificationReader.isMapsNav(sbn)) {
-            NavController.onNavStopped(applicationContext)
+        runCatching {
+            if (sbn != null && GMapsNotificationReader.isMapsNav(sbn)) {
+                NavController.onNavStopped(applicationContext)
+            }
         }
     }
 }
