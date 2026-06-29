@@ -28,7 +28,7 @@ On Graphene/Android, permissions are tricky for self-installed APKs. I did this:
 4. Go back to "notifications read, reply & control" → now the toggle for Pebble Maps Nav will enable. Confirm the warning dialog.
 
 
-At some point, I may publish to play-store, but for now, this is basically just for me & mty firends that have Pebbles.
+At some point, I may publish to play-store, but for now, this is basically just for me & my friends that have Pebbles.
 
 
 ## How it works
@@ -46,7 +46,7 @@ NotificationListenerService  ──►  parse turn / distance / street / ETA + m
    ▼
 PebbleKit Android 2  ──►  launches the watchapp + sends an AppMessage each update
    ▼
-Watchapp (C)  ──►  draws the arrow, distance, street; UP = ETA, DOWN = details
+Watchapp (C)  ──►  one screen: arrow, distance, street, trip summary
 ```
 
 The maneuver **arrow** is the actual icon Google draws (downsampled and forwarded), so it
@@ -113,8 +113,8 @@ the turn, the street, and a trip-summary line (time left · distance left · ETA
 - `cd android && ./gradlew test` — parser tests over real-notification text fixtures.
 - Watchapp compiles clean for every target platform (`pebble build`).
 - **Test send** button exercises phone→watch delivery and all three views without driving.
-- On-device: start Google Maps navigation → watch shows and updates each turn; UP/DOWN switch
-  views; ending navigation returns the watch to its watchface.
+- On-device: start Google Maps navigation → watch shows and updates each turn; ending
+  navigation returns the watch to its watchface.
 
 **Continuous integration:** `.github/workflows/ci.yml` builds both halves on every push/PR —
 the Android job runs `assembleDebug` + `test` (and uploads the debug APK), and the watchapp

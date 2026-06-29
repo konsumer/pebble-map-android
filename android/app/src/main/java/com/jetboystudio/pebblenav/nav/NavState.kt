@@ -22,15 +22,11 @@ data class NavState(
 }
 
 /**
- * Raw text pulled from the Google Maps notification's RemoteViews, before interpretation.
- * Kept as plain strings so NavParser is pure and testable. The maneuver arrow bitmap is
- * handled separately (it is not text).
+ * Candidate text lines pulled from the Google Maps notification (its `extras` plus every
+ * TextView in its RemoteViews), before interpretation. Kept as plain strings so NavParser is
+ * pure and testable. The maneuver arrow bitmap is handled separately (it is not text).
  */
 data class RawNav(
-    val title: String? = null,                 // nav_title -> "400 m"
-    val description: String? = null,            // nav_description -> "Turn right onto Elm St"
-    val time: String? = null,                   // nav_time -> "12 min · 5.2 km · 10:45"
-    val lockscreenDirections: String? = null,   // "400 m · Turn right onto Elm St"
-    val lockscreenEta: String? = null,          // "Elm St · 10:45"
+    val lines: List<String> = emptyList(),
     val rerouting: Boolean = false,
 )

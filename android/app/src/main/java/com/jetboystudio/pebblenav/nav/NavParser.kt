@@ -1,59 +1,84 @@
 package com.jetboystudio.pebblenav.nav
 
 /**
- * Pure (no Android) interpretation of the raw Google Maps notification text into a [NavState].
+ * Pure (no Android) interpretation of the candidate text lines pulled from the Google Maps
+ * navigation notification into a [NavState].
  *
- * Google Maps packs trip info as "duration · distance · ETA" and the next step as a
- * separate distance + instruction. The separator is a spaced punctuation/bullet, which we
- * match loosely so it survives locale and middot/bullet variations. Everything here is
- * best-effort: if text parsing misses, the forwarded maneuver arrow bitmap still shows.
+ * Rather than depend on exact notification layout / resource names (which vary by Maps and OS
+ * version), we classify each line by its *content*: a distance token ("400 m"), a clock time
+ * ("3:21 PM"), a duration ("12 min"), a "duration · distance · ETA" trip line, or the
+ * instruction text. Everything is best-effort — if text classification misses, the forwarded
+ * maneuver arrow bitmap still shows.
  *
  * Modelled on 3v1n0/GMapsParser (LGPL-3.0) — see README "Credits".
  */
 object NavParser {
 
-    // whitespace + one-or-more separator chars + whitespace. Includes ASCII punctuation
-    // plus the unicode middots / bullets / dashes Google Maps uses across locales.
+    // whitespace + separator chars + whitespace (ASCII punctuation + unicode middots/bullets/dashes).
     private val SPLIT = Regex("""\s+[\p{Punct}·•‧・–—|]+\s+""")
-    private val ETA = Regex("""\d{1,2}[:.]\d{2}(\s*([AaPp][Mm]))?""")
+    private val CLOCK = Regex("""\b\d{1,2}[:.]\d{2}(\s*[AaPp][Mm])?\b""")
+    private val DISTANCE = Regex(
+        """^\d+([.,]\d+)?\s*(m|km|ft|mi|yd|meters?|metres?|feet|miles?|yards?)$""",
+        RegexOption.IGNORE_CASE,
+    )
+    private val DURATION = Regex(
+        """\d+\s*(h|hr|hrs|hour|hours|min|mins|minute|minutes|sec|secs|second|seconds)\b""",
+        RegexOption.IGNORE_CASE,
+    )
+    private val ETA_WORDS = Regex("""(?i)\b(arrive|arrival|eta|by|at)\b""")
+    private val NON_LETTER = Regex("""[^\p{L}]""")
 
     fun parse(raw: RawNav): NavState {
+        val lines = raw.lines.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+
         if (raw.rerouting) {
-            return NavState(
-                active = true,
-                maneuver = Maneuver.STRAIGHT,
-                instruction = raw.description?.trim().orEmpty().ifEmpty { "Rerouting…" },
-            )
+            val instr = lines.firstOrNull().orEmpty().ifEmpty { "Rerouting…" }
+            return NavState(active = true, maneuver = Maneuver.STRAIGHT, instruction = instr, street = instr)
         }
 
-        var distance = raw.title?.trim().orEmpty()
-        var instruction = raw.description?.trim().orEmpty()
-
-        // Lockscreen layout packs "distance · instruction" onto one line.
-        if ((distance.isEmpty() || instruction.isEmpty()) && !raw.lockscreenDirections.isNullOrBlank()) {
-            val parts = raw.lockscreenDirections.split(SPLIT, limit = 2)
-            if (parts.size == 2) {
-                if (distance.isEmpty()) distance = parts[0].trim()
-                if (instruction.isEmpty()) instruction = parts[1].trim()
-            } else if (instruction.isEmpty()) {
-                instruction = raw.lockscreenDirections.trim()
-            }
-        }
-
+        var distance = ""
+        var instruction = ""
         var timeRemain = ""
         var distRemain = ""
         var eta = ""
-        if (!raw.time.isNullOrBlank()) {
-            val parts = raw.time.split(SPLIT).map { it.trim() }.filter { it.isNotEmpty() }
+
+        for (line in lines) {
+            val parts = line.split(SPLIT).map { it.trim() }.filter { it.isNotEmpty() }
+            if (parts.size >= 2) {
+                val hasClock = parts.any { CLOCK.containsMatchIn(it) }
+                val hasDuration = parts.any { DURATION.containsMatchIn(it) }
+                val hasDistance = parts.any { isDistance(it) }
+
+                // A trip line ("12 min · 5.2 km · 10:45"): assign parts by what they look like.
+                if (hasClock || (hasDuration && hasDistance)) {
+                    for (p in parts) {
+                        when {
+                            CLOCK.containsMatchIn(p) && eta.isEmpty() -> eta = clockOf(p)
+                            isDistance(p) && distRemain.isEmpty() -> distRemain = p
+                            DURATION.containsMatchIn(p) && timeRemain.isEmpty() -> timeRemain = p
+                        }
+                    }
+                    continue
+                }
+                // A "distance · instruction" oneliner (lockscreen style).
+                if (isDistance(parts[0]) && !isDistance(parts[1])) {
+                    if (distance.isEmpty()) distance = parts[0]
+                    if (instruction.isEmpty()) instruction = parts.drop(1).joinToString(" ")
+                    continue
+                }
+            }
+
             when {
-                parts.size >= 3 -> { timeRemain = parts[0]; distRemain = parts[1]; eta = parts[2] }
-                parts.size == 2 -> { timeRemain = parts[0]; eta = parts[1] }
-                parts.size == 1 -> timeRemain = parts[0]
+                isDistance(line) -> if (distance.isEmpty()) distance = line
+                isEtaOnly(line) -> if (eta.isEmpty()) eta = clockOf(line)
+                isDurationOnly(line) -> if (timeRemain.isEmpty()) timeRemain = line
+                else -> if (instruction.isEmpty()) instruction = line
             }
         }
-        // Fall back to the lockscreen ETA line if the main one had no clock time.
-        if (ETA.find(eta) == null && !raw.lockscreenEta.isNullOrBlank()) {
-            ETA.find(raw.lockscreenEta)?.let { eta = it.value }
+
+        // Last-chance ETA: any line containing a clock time.
+        if (eta.isEmpty()) {
+            lines.firstNotNullOfOrNull { CLOCK.find(it)?.value }?.let { eta = it }
         }
 
         return NavState(
@@ -66,6 +91,27 @@ object NavParser {
             distRemain = distRemain,
             timeRemain = timeRemain,
         )
+    }
+
+    private fun isDistance(s: String): Boolean = DISTANCE.matches(s.trim())
+
+    private fun clockOf(s: String): String = CLOCK.find(s)?.value ?: s
+
+    /** A line that is essentially just an arrival time, e.g. "Arrive 3:21 PM" or "3:20". */
+    private fun isEtaOnly(s: String): Boolean {
+        val m = CLOCK.find(s) ?: return false
+        val rest = (s.substring(0, m.range.first) + s.substring(m.range.last + 1))
+            .replace(ETA_WORDS, " ")
+            .replace(NON_LETTER, " ")
+            .trim()
+        return rest.isEmpty()
+    }
+
+    /** A line that is essentially just a duration, e.g. "12 min" or "1 hr 4 min". */
+    private fun isDurationOnly(s: String): Boolean {
+        if (!DURATION.containsMatchIn(s)) return false
+        val rest = DURATION.replace(s, " ").replace(NON_LETTER, " ").trim()
+        return rest.isEmpty()
     }
 
     /** "Turn right onto Main St" -> "Main St"; "Continue on I-5 N" -> "I-5 N". */

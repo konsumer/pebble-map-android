@@ -17,13 +17,17 @@ import android.widget.TextView
 data class NavRead(val raw: RawNav, val icon: Bitmap?)
 
 /**
- * Reads the Google Maps turn-by-turn notification. Maps doesn't put usable data in the
- * notification `extras`; the real content lives in custom RemoteViews. We inflate those
- * (against Maps' own resources) and walk the view tree, identifying fields by their
- * resource-entry-name. Approach and resource names from 3v1n0/GMapsParser (LGPL-3.0).
+ * Reads the Google Maps turn-by-turn notification. We gather every candidate text string —
+ * the notification `extras` and the text of every TextView in its (custom) RemoteViews — plus
+ * the maneuver icon, and let NavParser classify by content. This is resilient to Maps/OS
+ * layout changes because it doesn't depend on exact resource names. Approach from
+ * 3v1n0/GMapsParser (LGPL-3.0).
  */
 object GMapsNotificationReader {
     const val GMAPS_PACKAGE = "com.google.android.apps.maps"
+
+    // App-name / chrome strings that show up in notifications but aren't navigation text.
+    private val IGNORE = setOf("google maps", "maps", "navigation")
 
     /** Matches the Maps navigation notification by package + id (id 1 is the nav one). */
     fun isMapsNav(sbn: StatusBarNotification): Boolean =
@@ -34,79 +38,81 @@ object GMapsNotificationReader {
         sbn.isOngoing && isMapsNav(sbn)
 
     fun read(context: Context, sbn: StatusBarNotification): NavRead? {
-        return try {
-            // A context backed by Maps' resources, needed to inflate its layout + names.
+        val lines = LinkedHashSet<String>()
+        var icon: Bitmap? = null
+
+        // 1. Notification extras — cheap and often populated.
+        val extras = sbn.notification.extras
+        if (extras != null) {
+            for (key in EXTRA_KEYS) addLine(lines, extras.getCharSequence(key))
+        }
+
+        // 2. The custom RemoteViews — the richest source. Best-effort; failure here still
+        //    leaves us the extras + large icon.
+        try {
             @Suppress("DEPRECATION")
             val appCtx = context.createPackageContext(sbn.packageName, Context.CONTEXT_IGNORE_SECURITY)
             val builder = Notification.Builder.recoverBuilder(context, sbn.notification)
-            val views = builder.createBigContentView() ?: builder.createContentView() ?: return null
-
-            val inflater = appCtx.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
-            val group = inflater.inflate(views.layoutId, null) as? ViewGroup ?: return null
-            @Suppress("DEPRECATION")
-            views.reapply(appCtx, group)
-
-            val acc = Acc()
-            walk(appCtx, group, acc)
-
-            val description = acc.description ?: acc.lockOneliner
-            val rerouting = description?.contains("rerout", ignoreCase = true) == true
-            NavRead(
-                RawNav(
-                    title = acc.title,
-                    description = description,
-                    time = acc.time,
-                    lockscreenDirections = acc.lockDirections,
-                    lockscreenEta = acc.lockEta,
-                    rerouting = rerouting,
-                ),
-                acc.icon,
-            )
-        } catch (e: Throwable) {
-            null
-        }
-    }
-
-    private class Acc {
-        var title: String? = null
-        var description: String? = null
-        var time: String? = null
-        var lockDirections: String? = null
-        var lockOneliner: String? = null
-        var lockEta: String? = null
-        var icon: Bitmap? = null
-    }
-
-    private fun walk(appCtx: Context, view: View, acc: Acc) {
-        val name = entryName(appCtx, view.id)
-        when (view) {
-            is ImageView -> {
-                if (acc.icon == null &&
-                    (name == "nav_notification_icon" || name == "right_icon" ||
-                        name == "lockscreen_notification_icon")
-                ) {
-                    acc.icon = view.drawable?.let { drawableToBitmap(it) }
+            val views = builder.createBigContentView() ?: builder.createContentView()
+            if (views != null) {
+                val inflater = appCtx.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+                val group = inflater.inflate(views.layoutId, null) as? ViewGroup
+                if (group != null) {
+                    @Suppress("DEPRECATION")
+                    views.reapply(appCtx, group)
+                    icon = walk(appCtx, group, lines)
                 }
             }
-            is TextView -> {
-                val text = view.text?.toString()?.trim().orEmpty()
-                if (text.isNotEmpty()) {
-                    when (name) {
-                        "nav_title" -> acc.title = text
-                        "nav_description" -> acc.description = text
-                        "nav_time", "header_text" -> acc.time = text
-                        "lockscreen_directions" -> if (acc.lockDirections == null) acc.lockDirections = text
-                        "lockscreen_oneliner" -> if (acc.lockOneliner == null) acc.lockOneliner = text
-                        "lockscreen_eta" -> if (acc.lockEta == null) acc.lockEta = text
-                    }
-                }
+        } catch (e: Throwable) {
+            // ignore — fall back to extras + large icon
+        }
+
+        // 3. Maneuver icon fallback: Maps puts the turn arrow in the notification's large icon.
+        if (icon == null) {
+            icon = runCatching {
+                sbn.notification.getLargeIcon()?.loadDrawable(context)?.let { drawableToBitmap(it) }
+            }.getOrNull()
+        }
+
+        if (lines.isEmpty()) return null
+        val rerouting = lines.any { it.contains("rerout", ignoreCase = true) }
+        return NavRead(RawNav(lines.toList(), rerouting), icon)
+    }
+
+    private val EXTRA_KEYS = listOf(
+        Notification.EXTRA_TITLE,
+        Notification.EXTRA_TEXT,
+        Notification.EXTRA_BIG_TEXT,
+        Notification.EXTRA_SUB_TEXT,
+        Notification.EXTRA_INFO_TEXT,
+        Notification.EXTRA_SUMMARY_TEXT,
+    )
+
+    private fun addLine(into: MutableSet<String>, cs: CharSequence?) {
+        val t = cs?.toString()?.trim().orEmpty()
+        if (t.isNotEmpty() && t.lowercase() !in IGNORE) into.add(t)
+    }
+
+    /** Collect every TextView's text; return the first maneuver-icon bitmap found. */
+    private fun walk(appCtx: Context, view: View, lines: MutableSet<String>): Bitmap? {
+        var icon: Bitmap? = null
+        if (view is TextView) {
+            addLine(lines, view.text)
+        } else if (view is ImageView) {
+            val name = entryName(appCtx, view.id)
+            if (name == "nav_notification_icon" || name == "right_icon" ||
+                name == "lockscreen_notification_icon"
+            ) {
+                icon = view.drawable?.let { drawableToBitmap(it) }
             }
         }
         if (view is ViewGroup) {
             for (i in 0 until view.childCount) {
-                walk(appCtx, view.getChildAt(i), acc)
+                val childIcon = walk(appCtx, view.getChildAt(i), lines)
+                if (icon == null) icon = childIcon
             }
         }
+        return icon
     }
 
     private fun entryName(appCtx: Context, id: Int): String? = try {

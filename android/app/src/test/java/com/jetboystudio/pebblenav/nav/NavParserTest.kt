@@ -5,21 +5,29 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Tests for the pure parsing logic over text captured from real Google Maps navigation
- * notifications (standard + lockscreen layouts, metric + imperial, bullet variants).
+ * Tests for the content-based parsing over text captured from real Google Maps navigation
+ * notifications (trip start, standard, lockscreen, metric/imperial, bullet variants).
  */
 class NavParserTest {
 
+    private fun parse(vararg lines: String) = NavParser.parse(RawNav(lines.toList()))
+
+    @Test
+    fun tripStartNoDistanceArriveEta() {
+        // Real case: "Head toward SW Hamilton St" / "Arrive 3:21 PM" / a traffic line.
+        val s = parse("Head toward SW Hamilton St", "Arrive 3:21 PM", "Light traffic")
+        assertTrue(s.active)
+        assertEquals(Maneuver.STRAIGHT, s.maneuver)
+        assertEquals("", s.distance) // no distance at trip start — fine
+        assertEquals("Head toward SW Hamilton St", s.instruction)
+        assertEquals("SW Hamilton St", s.street)
+        assertEquals("3:21 PM", s.eta)
+        assertEquals("", s.timeRemain)
+    }
+
     @Test
     fun standardDrivingUpdate() {
-        val s = NavParser.parse(
-            RawNav(
-                title = "200 m",
-                description = "Turn right onto Elm Street",
-                time = "12 min · 5.2 km · 10:45",
-            )
-        )
-        assertTrue(s.active)
+        val s = parse("200 m", "Turn right onto Elm Street", "12 min · 5.2 km · 10:45")
         assertEquals(Maneuver.TURN_RIGHT, s.maneuver)
         assertEquals("200 m", s.distance)
         assertEquals("Elm Street", s.street)
@@ -31,13 +39,7 @@ class NavParserTest {
 
     @Test
     fun imperialWithAmPmAndBullets() {
-        val s = NavParser.parse(
-            RawNav(
-                title = "0.3 mi",
-                description = "Turn left onto Main St",
-                time = "18 min • 12 mi • 6:02 PM",
-            )
-        )
+        val s = parse("0.3 mi", "Turn left onto Main St", "18 min • 12 mi • 6:02 PM")
         assertEquals(Maneuver.TURN_LEFT, s.maneuver)
         assertEquals("0.3 mi", s.distance)
         assertEquals("Main St", s.street)
@@ -47,18 +49,23 @@ class NavParserTest {
     }
 
     @Test
-    fun lockscreenLayoutSplitsDistanceAndInstruction() {
-        val s = NavParser.parse(
-            RawNav(
-                lockscreenDirections = "400 m · Continue on I-5 N",
-                lockscreenEta = "Home · 3:20 PM",
-            )
-        )
+    fun lockscreenDistanceInstructionOneliner() {
+        val s = parse("400 m · Continue on I-5 N", "Home · 3:20 PM")
         assertEquals("400 m", s.distance)
         assertEquals("Continue on I-5 N", s.instruction)
         assertEquals("I-5 N", s.street)
         assertEquals(Maneuver.STRAIGHT, s.maneuver)
         assertEquals("3:20 PM", s.eta)
+    }
+
+    @Test
+    fun hourLongTrip() {
+        val s = parse("1 hr 4 min · 92 km · 3:20 PM", "Slight left onto Oak Ave")
+        assertEquals("1 hr 4 min", s.timeRemain)
+        assertEquals("92 km", s.distRemain)
+        assertEquals("3:20 PM", s.eta)
+        assertEquals(Maneuver.SLIGHT_LEFT, s.maneuver)
+        assertEquals("Oak Ave", s.street)
     }
 
     @Test
@@ -74,26 +81,17 @@ class NavParserTest {
     }
 
     @Test
-    fun roundaboutBeatsRightKeyword() {
-        // "exit" / "right" appear, but roundabout must win.
-        assertEquals(
-            Maneuver.ROUNDABOUT,
-            NavParser.guessManeuver("At the roundabout, take the 1st exit on the right"),
-        )
-    }
-
-    @Test
     fun reroutingDegradesGracefully() {
-        val s = NavParser.parse(RawNav(description = "Rerouting…", rerouting = true))
+        val s = NavParser.parse(RawNav(listOf("Rerouting…"), rerouting = true))
         assertTrue(s.active)
         assertEquals("Rerouting…", s.instruction)
     }
 
     @Test
-    fun missingFieldsDoNotThrow() {
-        val s = NavParser.parse(RawNav(title = "150 ft"))
-        assertEquals("150 ft", s.distance)
+    fun emptyNotificationDoesNotThrow() {
+        val s = parse()
+        assertEquals("", s.distance)
         assertEquals("", s.eta)
-        assertEquals("", s.timeRemain)
+        assertEquals(Maneuver.UNKNOWN, s.maneuver)
     }
 }
