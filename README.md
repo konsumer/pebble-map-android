@@ -15,7 +15,7 @@ I wanted a simple & open-source turn-direction (and eventually map) app for pebb
 
 Two parts: the **watchapp** (on the watch) and the **Android companion** (on the phone).
 
-**Watchapp** — install **Maps Nav** from the [Rebble appstore](https://apps.rebble.io/) (or
+**Watchapp** — install **Maps Nav** from the [RePebble appstore](https://apps.repebble.com/maps-nav_99279aadf6df4c0fadfdb39a) (or
 open the `.pbw` from a [release](https://github.com/konsumer/pebble-map-android/releases) in
 the Pebble app).
 
@@ -25,9 +25,6 @@ the Pebble app).
   [Obtainium](https://github.com/ImranR98/Obtainium), then *Add App* with this URL:
   `https://github.com/konsumer/pebble-map-android`. It installs the latest signed APK and
   keeps it updated.
-- **IzzyOnDroid (F-Droid repo):** add the IzzyOnDroid repo
-  (`https://apt.izzysoft.de/fdroid/repo`) to the [F-Droid](https://f-droid.org) client, then
-  search for **Pebble Maps Nav**.
 - **Manual:** download `pebble-maps-nav.apk` from the
   [latest release](https://github.com/konsumer/pebble-map-android/releases/latest).
 
@@ -162,6 +159,28 @@ green/red signal.
 - Keep the watchapp UUID and the AppMessage key numbers in sync across
   `watchapp/src/c/keys.h`, `watchapp/package.json`, and `PebbleForwarder.kt` — see
   `shared-contract.md`.
+
+## Developer Notes
+
+```sh
+# generate a key
+docker run --rm -it --user "$(id -u):$(id -g)" -v "$PWD":/work -w /work \
+  eclipse-temurin:17-jdk \
+  keytool -genkeypair -v -keystore pebble-maps-nav.keystore \
+    -alias pebble-maps-nav -keyalg RSA -keysize 2048 -validity 10000
+
+base64 -w0 pebble-maps-nav.keystore
+
+```
+
+GitHub repo → Settings → Secrets and variables → Actions → New repository secret:
+```
+- KEYSTORE_BASE64 → from last step
+- KEYSTORE_PASSWORD → your keystore password
+- KEY_ALIAS → pebble-maps-nav
+- KEY_PASSWORD → your key password (same as keystore if you reused it)
+```
+
 
 ## Credits
 

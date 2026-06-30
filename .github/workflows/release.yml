@@ -43,7 +43,7 @@ jobs:
             echo "KEYSTORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
             echo "Release keystore decoded — APK will be release-signed."
           else
-            echo "No KEYSTORE_BASE64 secret — APK will be debug-signed (set secrets for IzzyOnDroid)."
+            echo "No KEYSTORE_BASE64 secret — APK would fall back to debug signing."
           fi
 
       - name: Build release APK
@@ -53,6 +53,19 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Verify the APK is release-signed (not debug)
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          APKSIGNER=$(find "$ANDROID_HOME" -path '*build-tools*' -name apksigner 2>/dev/null | sort -V | tail -1)
+          if [ -z "$APKSIGNER" ]; then echo "::error::apksigner not found"; exit 1; fi
+          CERTS="$("$APKSIGNER" verify --print-certs "$APK")"
+          echo "$CERTS"
+          if echo "$CERTS" | grep -qi "Android Debug"; then
+            echo "::error::Release APK is DEBUG-signed. Set the KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS and KEY_PASSWORD secrets, then re-run."
+            exit 1
+          fi
+          echo "OK: APK is signed with a non-debug certificate."
 
       - name: Attach APK to release
         env:
