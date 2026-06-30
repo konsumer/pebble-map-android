@@ -9,6 +9,9 @@ works across Pebble platforms).
 
 I wanted a simple & open-source turn-direction (and eventually map) app for pebble. This is not fancy, but you can evaluate how it works (for security.) I tested on latest Graphene on a Pixel 10 Pro.
 
+It requires a companion-app, and for you to get Google Map directions, first. If you want something standalone, check out [Navi App](https://apps.repebble.com/navi-app_e5e4d6c0ecbd44b980379456) which is excellant.
+
+
 ## Usage
 
 ### Install
