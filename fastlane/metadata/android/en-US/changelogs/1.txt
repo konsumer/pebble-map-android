@@ -1,0 +1,3 @@
+First release. Forwards Google Maps turn-by-turn navigation (maneuver arrow, distance,
+street, time/distance left, ETA) to a Pebble watch, and launches the watchapp automatically
+when navigation starts.

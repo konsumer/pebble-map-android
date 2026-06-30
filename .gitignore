@@ -12,5 +12,10 @@ android/captures/
 .idea/
 *.iml
 
+# Signing — never commit the keystore or its passwords
+android/keystore.properties
+*.keystore
+*.jks
+
 # OS
 .DS_Store

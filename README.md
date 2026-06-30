@@ -7,9 +7,32 @@ Android phone and the next turn — arrow, distance, and street — pops up on t
 automatically. Built for the relaunched, open-source Pebble (primary target **Pebble Time 2**,
 works across Pebble platforms).
 
-I wanted a simple & open-source turn-direction (and eventually map) app for pebble. THis is not fancy, but you can evaluate how it works (for security.) I tested on latest Graphene on a Pixel 10 Pro.
+I wanted a simple & open-source turn-direction (and eventually map) app for pebble. This is not fancy, but you can evaluate how it works (for security.) I tested on latest Graphene on a Pixel 10 Pro.
 
 ## Usage
+
+### Install
+
+Two parts: the **watchapp** (on the watch) and the **Android companion** (on the phone).
+
+**Watchapp** — install **Maps Nav** from the [Rebble appstore](https://apps.rebble.io/) (or
+open the `.pbw` from a [release](https://github.com/konsumer/pebble-map-android/releases) in
+the Pebble app).
+
+**Android companion** — no Google Play needed:
+
+- **Obtainium (easiest, auto-updates):** install
+  [Obtainium](https://github.com/ImranR98/Obtainium), then *Add App* with this URL:
+  `https://github.com/konsumer/pebble-map-android`. It installs the latest signed APK and
+  keeps it updated.
+- **IzzyOnDroid (F-Droid repo):** add the IzzyOnDroid repo
+  (`https://apt.izzysoft.de/fdroid/repo`) to the [F-Droid](https://f-droid.org) client, then
+  search for **Pebble Maps Nav**.
+- **Manual:** download `pebble-maps-nav.apk` from the
+  [latest release](https://github.com/konsumer/pebble-map-android/releases/latest).
+
+Then grant notification access (see [Permissions](#permissions)) and start driving directions
+in Google Maps.
 
 ### Files
 
@@ -17,6 +40,9 @@ I wanted this to be very source-tracable, so you can see exactly how the file wa
 
 - Click on latest green action-run [here](https://github.com/konsumer/pebble-map-android/actions)
 - scroll to bottom (after inspecting run, etc) and download `app-debug-apk` and `watchapp-pbw` to your phone. they are zips, so extract them in your file-browser. Install the APK, and open the pbw in Pebble.
+
+You can also find the APK on any [release](https://github.com/konsumer/pebble-map-android/releases) for easier download.
+
 
 ### Permissions
 
